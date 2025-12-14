@@ -1,0 +1,35 @@
+<nav class="navbar">
+    <div class="container">
+        <div class="nav-brand">
+            <a href="{{ '/' | relative_url }}">
+                <span class="brand-text">සිංහල</span>
+                <span class="brand-subtitle">Software Foundation</span>
+            </a>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="{{ '/' | relative_url }}" {% if page.url == '/' %}class="active"{% endif %}>Home</a></li>
+            <li><a href="{{ '/projects' | relative_url }}" {% if page.url == '/projects' or page.url == '/projects/' %}class="active"{% endif %}>Projects</a></li>
+            <li><a href="{{ '/contribute' | relative_url }}" {% if page.url == '/contribute' or page.url == '/contribute/' %}class="active"{% endif %}>Contribute</a></li>
+        </ul>
+        <div class="nav-toggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navToggle = document.querySelector('.nav-toggle');
+        const navMenu = document.querySelector('.nav-menu');
+        
+        if (navToggle) {
+            navToggle.addEventListener('click', function() {
+                navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
+            });
+        }
+    });
+</script>
+

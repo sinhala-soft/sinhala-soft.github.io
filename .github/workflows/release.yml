@@ -1,0 +1,102 @@
+name: Release and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if version bump commit
+        id: skip_check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ "$COMMIT_MSG" == "chore: bump version to "* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping version bump: This is a version bump commit"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Proceeding with version bump and release"
+          fi
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+
+      - name: Get current version
+        id: get_version
+        if: steps.skip_check.outputs.skip == 'false'
+        run: |
+          CURRENT_VERSION=$(grep '^version:' _config.yml | sed 's/version: "\(.*\)"/\1/')
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Bump version
+        id: bump_version
+        if: steps.skip_check.outputs.skip == 'false'
+        run: |
+          CURRENT_VERSION="${{ steps.get_version.outputs.current }}"
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+          
+          # Bump patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          
+          # Update _config.yml
+          sed -i "s/^version: \".*\"/version: \"$NEW_VERSION\"/" _config.yml
+
+      - name: Commit version bump
+        if: steps.skip_check.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add _config.yml
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new }}" || exit 0
+          git push
+
+      - name: Create tag
+        if: steps.skip_check.outputs.skip == 'false'
+        run: |
+          git tag -a "v${{ steps.bump_version.outputs.new }}" -m "Release v${{ steps.bump_version.outputs.new }}"
+          git push origin "v${{ steps.bump_version.outputs.new }}"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
