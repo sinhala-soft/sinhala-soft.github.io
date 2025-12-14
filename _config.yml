@@ -3,7 +3,7 @@ title: Sinhala Software Foundation
 description: Building open source tools for the Sinhala language
 url: https://sinhala-soft.github.io
 baseurl: ""
-version: "0.1.0"
+version: "0.1.1"
 
 # Build settings
 markdown: kramdown
